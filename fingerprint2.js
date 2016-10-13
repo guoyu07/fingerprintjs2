@@ -1,5 +1,5 @@
 /*
-* Fingerprintjs2 1.3.0 - Modern & flexible browser fingerprint library v2
+* Fingerprintjs2 1.4.2 - Modern & flexible browser fingerprint library v2
 * https://github.com/Valve/fingerprintjs2
 * Copyright (c) 2015 Valentin Vasilyev (valentin.vasilyev@outlook.com)
 * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php) license.
@@ -54,11 +54,17 @@
     };
   }
   var Fingerprint2 = function(options) {
+
+    if (!(this instanceof Fingerprint2)) {
+      return new Fingerprint2(options);
+    }
+
     var defaultOptions = {
       swfContainerId: "fingerprintjs2",
       swfPath: "flash/compiled/FontList.swf",
       detectScreenOrientation: true,
-      sortPluginsFor: [/palemoon/i]
+      sortPluginsFor: [/palemoon/i],
+      userDefinedFonts: []
     };
     this.options = this.extend(options, defaultOptions);
     this.nativeForEach = Array.prototype.forEach;
@@ -84,6 +90,7 @@
       keys = this.userAgentKey(keys);
       keys = this.languageKey(keys);
       keys = this.colorDepthKey(keys);
+      keys = this.pixelRatioKey(keys);
       keys = this.screenResolutionKey(keys);
       keys = this.availableScreenResolutionKey(keys);
       keys = this.timezoneOffsetKey(keys);
@@ -137,9 +144,18 @@
     },
     colorDepthKey: function(keys) {
       if(!this.options.excludeColorDepth) {
-        keys.push({key: "color_depth", value: screen.colorDepth});
+        keys.push({key: "color_depth", value: screen.colorDepth || -1});
       }
       return keys;
+    },
+    pixelRatioKey: function(keys) {
+      if(!this.options.excludePixelRatio) {
+        keys.push({key: "pixel_ratio", value: this.getPixelRatio()});
+      }
+      return keys;
+    },
+    getPixelRatio: function() {
+      return window.devicePixelRatio || "";
     },
     screenResolutionKey: function(keys) {
       if(!this.options.excludeScreenResolution) {
@@ -385,6 +401,8 @@
             fontList = fontList.concat(extendedFontList);
         }
 
+        fontList = fontList.concat(that.options.userDefinedFonts);
+
         //we use m or w because these two characters take up the maximum width.
         // And we use a LLi so that the same matching fonts can get separated
         var testString = "mmmmmmmmmmlli";
@@ -414,6 +432,7 @@
             s.style.position = "absolute";
             s.style.left = "-9999px";
             s.style.fontSize = testSize;
+            s.style.lineHeight = "normal";
             s.innerHTML = testString;
             return s;
         };
@@ -625,6 +644,10 @@
     getDoNotTrack: function () {
       if(navigator.doNotTrack) {
         return navigator.doNotTrack;
+      } else if (navigator.msDoNotTrack) {
+        return navigator.msDoNotTrack;
+      } else if (window.doNotTrack) {
+        return window.doNotTrack;
       } else {
         return "unknown";
       }
@@ -679,7 +702,7 @@
         ctx.font = "11pt no-real-font-123";
       }
       ctx.fillText("Cwm fjordbank glyphs vext quiz, \ud83d\ude03", 2, 15);
-      ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+      ctx.fillStyle = "rgba(102, 204, 0, 0.2)";
       ctx.font = "18pt Arial";
       ctx.fillText("Cwm fjordbank glyphs vext quiz, \ud83d\ude03", 4, 45);
 
@@ -835,13 +858,16 @@
       var ads = document.createElement("div");
       ads.innerHTML = "&nbsp;";
       ads.className = "adsbox";
+      var result = false;
       try {
         // body may not exist, that's why we need try/catch
         document.body.appendChild(ads);
-        return document.getElementsByClassName("adsbox")[0].offsetHeight === 0;
+        result = document.getElementsByClassName("adsbox")[0].offsetHeight === 0;
+        document.body.removeChild(ads);
       } catch (e) {
-        return false;
+        result = false;
       }
+      return result;
     },
     getHasLiedLanguages: function(){
       //We check if navigator.language is equal to the first language of navigator.languages
@@ -1270,6 +1296,6 @@
       return ("00000000" + (h1[0] >>> 0).toString(16)).slice(-8) + ("00000000" + (h1[1] >>> 0).toString(16)).slice(-8) + ("00000000" + (h2[0] >>> 0).toString(16)).slice(-8) + ("00000000" + (h2[1] >>> 0).toString(16)).slice(-8);
     }
   };
-  Fingerprint2.VERSION = "1.3.0";
+  Fingerprint2.VERSION = "1.4.2";
   return Fingerprint2;
 });
